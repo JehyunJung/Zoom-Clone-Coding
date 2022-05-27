@@ -23,13 +23,33 @@ function handleConnection(socket){
     console.log(socket)
 }
 */
+const sockets=[]
+//wss=> websocket server
 wss.on("connection",(socket)=>{
+    sockets.push(socket);
+    socket["nickname"]="Anonymous";
     console.log("Connected to Browser");
+    //socket => specific web browser
     socket.on("close",()=>console.log("Disconnected from the Client"));
+    /*
     socket.on("message",(message)=>{
         console.log(message.toString('utf-8'));
     });
-    socket.send("hello!!!");
+    */
+   socket.on("message",(msg)=>{
+       const message=JSON.parse(msg.toString('utf-8'));
+       console.log(message);
+       switch(message.type){
+            case "new_message":
+                sockets.forEach(aSocket=>aSocket.send(`${socket.nickname}: ${message.payload}`));
+            case "nickname":
+                console.log(message.payload);
+                socket["nickname"]=message.payload
+       }
+       //socket.send(message);
+       
+   })
+    //socket.send("hello!!!");
 });
 
 //using http server and websocket together

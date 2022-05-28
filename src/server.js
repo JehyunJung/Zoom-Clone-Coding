@@ -1,6 +1,6 @@
 import express from "express";
 import http from "http";
-import WebSocket from "ws";
+import SocketIO from "socket.io";
 const app=express();
 
 app.set("view engine","pug");
@@ -14,44 +14,45 @@ const handleListen = () => console.log(`Listening on http://localhost:3000`);
 
 //http server => to get access to server
 const server=http.createServer(app);
-//websocket server
-const wss=new WebSocket.Server({server});
 
-//socket represents a connected web browser
-/*
-function handleConnection(socket){
-    console.log(socket)
-}
-*/
-const sockets=[]
-//wss=> websocket server
-wss.on("connection",(socket)=>{
-    sockets.push(socket);
-    socket["nickname"]="Anonymous";
-    console.log("Connected to Browser");
-    //socket => specific web browser
-    socket.on("close",()=>console.log("Disconnected from the Client"));
-    /*
-    socket.on("message",(message)=>{
-        console.log(message.toString('utf-8'));
-    });
-    */
-   socket.on("message",(msg)=>{
-       const message=JSON.parse(msg.toString('utf-8'));
-       console.log(message);
-       switch(message.type){
-            case "new_message":
-                sockets.forEach(aSocket=>aSocket.send(`${socket.nickname}: ${message.payload}`));
-            case "nickname":
-                console.log(message.payload);
-                socket["nickname"]=message.payload
-       }
-       //socket.send(message);
-       
-   })
-    //socket.send("hello!!!");
-});
+//socket.io server
+const io=SocketIO(server);
 
-//using http server and websocket together
+//socket server, connection event handler
+io.on("connection",socket => {
+        socket.onAny((event)=> {
+            console.log(`Socket Event: ${event}`);
+        });
+
+        socket.on("enter_room",(nickName,roomName,done)=>{
+            socket["nickname"]=nickName;
+            //join room
+            socket.join(roomName);
+            done();
+            //emit "welcome" event to everyone in the room
+            socket.to(roomName).emit("welcome",socket.nickname);
+
+            // setTimeout(()=>{
+            //     done("Hello from the Backend");
+            // },10000);    
+
+            }
+        );
+
+        socket.on("new_message",(msg,room,done)=>{
+            socket.to(room).emit("new_message",`${socket.nickname}: ${msg}`);
+            done();
+        })
+
+        socket.on("nickname",nickname => socket["nickname"]=nickname);
+
+        socket.on("disconnecting",()=>{
+            socket.rooms.forEach(room => socket.to(room).emit("bye",socket.nickname));
+            }
+        );
+        
+    }    
+)
+
 server.listen(3000,handleListen);
 

@@ -29,11 +29,6 @@ function handleMessageSubmit(event){
     input.value="";
 }
 
-function handleNicknameSubmit(event){
-    event.preventDefault();
-    
-}
-
 function showRoom(){
     welcome.hidden=true;
     room.hidden=false;
@@ -48,7 +43,6 @@ function handleRoomSubmit(event){
 
     const nameInput=welcome.querySelector("input");
     const roomInput=welcome.querySelector("input:nth-child(2)");
-    console.log(roomInput);
 
     //Emit anything + can send objects
     socket.emit("enter_room",nameInput.value,roomInput.value,showRoom);
@@ -62,7 +56,6 @@ socket.on("welcome",(user)=>{
         addMessage(`${user} Joined`);
     }
 )
-
 socket.on("bye",(user)=>{
     addMessage(`${user} left`);
     }

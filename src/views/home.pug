@@ -8,21 +8,14 @@ html(lang="en")
         link(rel="stylesheet", href="/public/css/mvp.css")
     body 
         header
-            h1 Noom 
+        main#myStream 
+            video#myFace(autoplay,playsinline,width="400",height="400")
+            button#mute Mute
+            button#camera Turn Camera Off
+            select#cameras
+                option 1
+                option 2
 
-        main 
-            div#welcome
-                form
-                    input(placeholder="nickname",required,type="text")
-                    input(placeholder="room name",required, type="text")
-                    button Enter Room
-                h4 Open Rooms: 
-                ul
-            #room
-                h3
-                ul 
-                form
-                    input(placeholder="message",required,type="text")
-                    button Send
+
         script(src="/socket.io/socket.io.js")
         script(src="/public/js/app.js")

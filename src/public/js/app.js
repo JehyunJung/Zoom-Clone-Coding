@@ -29,11 +29,14 @@ function handleMessageSubmit(event){
     input.value="";
 }
 
-function showRoom(){
+function addRoomInfo(count){
+    const h3=room.querySelector("h3");
+    h3.innerText=`Room ${roomName} (${count})`;
+}
+function showRoom(count){
     welcome.hidden=true;
     room.hidden=false;
-    const h3=room.querySelector("h3");
-    h3.innerText=`Room ${roomName}`;
+    addRoomInfo(count)
     const messageForm=room.querySelector("form");
     messageForm.addEventListener("submit",handleMessageSubmit);
 }
@@ -52,12 +55,29 @@ function handleRoomSubmit(event){
 }
 form.addEventListener("submit",handleRoomSubmit)
 
-socket.on("welcome",(user)=>{
+socket.on("welcome",(user,newCount)=>{
         addMessage(`${user} Joined`);
+        addRoomInfo(newCount);
     }
 )
-socket.on("bye",(user)=>{
+socket.on("bye",(user,newCount)=>{
     addMessage(`${user} left`);
+    addRoomInfo(newCount);
     }
 )
 socket.on("new_message",(msg)=>addMessage(msg));
+socket.on("room_change",(rooms)=> { 
+    const roomList=welcome.querySelector("ul");
+    roomList.innerHTML="";
+
+    if(Object.keys(rooms).length ===0){
+        return;
+    }
+    for(let [roomName,count] of Object.entries(rooms)){
+        const li=document.createElement("li");
+        li.innerText=`Room ${roomName} (${count})`;
+        roomList.appendChild(li);
+        };
+    }
+
+);

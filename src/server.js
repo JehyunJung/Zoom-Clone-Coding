@@ -1,6 +1,7 @@
 import express from "express";
 import http from "http";
-import SocketIO from "socket.io";
+import {Server} from "socket.io";
+import {instrument} from "@socket.io/admin-ui"
 const app=express();
 
 app.set("view engine","pug");
@@ -16,22 +17,58 @@ const handleListen = () => console.log(`Listening on http://localhost:3000`);
 const server=http.createServer(app);
 
 //socket.io server
-const io=SocketIO(server);
+const io=new Server(server,{
+    cors:{
+        origin:["https://admin.socket.io"],
+        credentials:true,
+    }
+})
+instrument(io,{
+    auth:false
+});
 
+//function that finds public rooms
+function publicRooms(){
+    /* 
+    const sids=io.sockets.adapter.sids;
+    const rooms=io.sockets.adapter.rooms; 
+    */
+
+    const {
+        sockets:{
+            adapter:{
+                sids,rooms
+            }
+        }
+    }=io;
+    const public_rooms={};
+    rooms.forEach((_,key)=>{
+        if(sids.get(key) === undefined){
+            public_rooms[key]=rooms.get(key)?.size;
+        }
+    })
+    return public_rooms;
+}
+function countRoom(roomName){
+    return io.sockets.adapter.rooms.get(roomName)?.size;
+}
 //socket server, connection event handler
 io.on("connection",socket => {
+        socket.emit("room_change",publicRooms())
         socket.onAny((event)=> {
             console.log(`Socket Event: ${event}`);
+            
         });
 
         socket.on("enter_room",(nickName,roomName,done)=>{
             socket["nickname"]=nickName;
             //join room
             socket.join(roomName);
-            done();
+            done(countRoom(roomName));
             //emit "welcome" event to everyone in the room
-            socket.to(roomName).emit("welcome",socket.nickname);
+            socket.to(roomName).emit("welcome",socket.nickname,countRoom(roomName));
 
+            io.sockets.emit("room_change",publicRooms());
             // setTimeout(()=>{
             //     done("Hello from the Backend");
             // },10000);    
@@ -44,9 +81,10 @@ io.on("connection",socket => {
             done();
         })
         socket.on("disconnecting",()=>{
-            socket.rooms.forEach(room => socket.to(room).emit("bye",socket.nickname));
-            }
+            socket.rooms.forEach(room => socket.to(room).emit("bye",socket.nickname,countRoom(room)-1));
+            }       
         );
+        socket.on("disconnect",()=>io.sockets.emit("room_change",publicRooms()));
         
     }    
 )

@@ -18,6 +18,7 @@ let cameraOff=false;
 let roomName;
 
 let myPeerConnection;
+let myDataChannel;
 
 async function getCameras(){
     try{
@@ -87,6 +88,13 @@ function handleCameraClick(){
 }
 async function handleCameraSelectChange(){
     await getMedia(camerasSelect.value);
+    //need to change new stream to peerConnection
+    if(myPeerConnection){
+        const videoSender=myPeerConnection
+        .getSenders()
+        .find(sender=> sender.track.kind="vide");
+        videoSender.replaceTrack(myStream.getVideoTracks()[0])
+    }
 }
 muteButton.addEventListener("click",handleMuteClick);
 cameraButton.addEventListener("click",handleCameraClick);
@@ -119,6 +127,8 @@ welcomeForm.addEventListener("submit",handleWelcomeSubmit)
 //PeerA
 socket.on("welcome",async ()=> {
     console.log("some body joined");
+    myDataChannel=myPeerConnection.createDataChannel("chat");
+    myDataChannel.addEventListener("message",console.log);
     const offer=await myPeerConnection.createOffer();
     myPeerConnection.setLocalDescription(offer)    
     socket.emit("offer",offer,roomName);
@@ -130,6 +140,10 @@ socket.on("answer",answer=>{
 
 //Peer B
 socket.on("offer",async (offer)=>{
+    myPeerConnection.addEventListener("datachannel",(event)=>{
+        myDataChannel=event.channel;
+        myDataChannel.addEventListener("message",console.log);
+    });
     myPeerConnection.setRemoteDescription(offer);
     const answer=await myPeerConnection.createAnswer();
     myPeerConnection.setLocalDescription(answer);
@@ -147,7 +161,20 @@ WebRTC Connection을 만드는 과정이 socket.io/websockets보다 오래 걸�
 먼저 실행 시켜준다.
 */
 function makeConnection(){
-    myPeerConnection=new RTCPeerConnection();3
+    myPeerConnection=new RTCPeerConnection({
+        iceServers:[
+            {
+                urls:[
+                    "stun:stun.l.google.com:19302",
+                    "stun:stun1.l.google.com:19302",
+                    "stun:stun2.l.google.com:19302",
+                    "stun:stun3.l.google.com:19302",
+                    "stun:stun4.l.google.com:19302",
+                ]
+            }
+        ]
+        }
+    );
     myPeerConnection.addEventListener("icecandidate",handleIce)
     myPeerConnection.addEventListener("addstreamevent",handleAddStream);
     //add Tracks 대신에 사용하는 함수
